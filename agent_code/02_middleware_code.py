@@ -1,12 +1,14 @@
+from calendar import error
+
 from langchain.agents import create_agent
-from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse
+from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse, dynamic_prompt, wrap_tool_call
 from langchain.chat_models import init_chat_model
 from langchain.tools import tool
 
 from env_utils import DEEPSEEK_BASE_URL, DEEPSEEK_API_KEY, DASHSCOPE_API_URL, \
     DASHSCOPE_API_KEY
 from my_llm import deepseek_llm
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, ToolMessage
 from typing import Callable
 
 # LLM 使用工具返回结果的步骤
@@ -38,20 +40,21 @@ def get_stock_price(company: str, timeframe: str = "today") -> str:
     }
 
     # 模拟股票数据
-    mock_data = {
-        "苹果公司": {"today": 185.20, "week": 183.50, "month": 182.00, "year": 175.00},
-        "特斯拉公司": {"today": 240.50, "week": 238.00, "month": 235.00, "year": 220.00},
-        "谷歌公司": {"today": 142.50, "week": 141.00, "month": 139.50, "year": 130.00},
-    }
-
-    # 标准化公司名称 - 关键修改
-    normalized_company = company_mapping.get(company, company)
-
-    if normalized_company in mock_data:
-        price = mock_data[normalized_company].get(timeframe, "未找到该时间范围的价格数据")
-        return f"{normalized_company} {timeframe}价格: {price}美元"
-    else:
-        return f"未找到 {company} 的股票数据"
+    raise ValueError("股票接口不可用")
+    # mock_data = {
+    #     "苹果公司": {"today": 185.20, "week": 183.50, "month": 182.00, "year": 175.00},
+    #     "特斯拉公司": {"today": 240.50, "week": 238.00, "month": 235.00, "year": 220.00},
+    #     "谷歌公司": {"today": 142.50, "week": 141.00, "month": 139.50, "year": 130.00},
+    # }
+    #
+    # # 标准化公司名称 - 关键修改
+    # normalized_company = company_mapping.get(company, company)
+    #
+    # if normalized_company in mock_data:
+    #     price = mock_data[normalized_company].get(timeframe, "未找到该时间范围的价格数据")
+    #     return f"{normalized_company} {timeframe}价格: {price}美元"
+    # else:
+    #     return f"未找到 {company} 的股票数据"
 
 
 @tool
@@ -134,17 +137,43 @@ def dynamic_model_selection(
 
     return handler(request.override(model=model))
 
+@dynamic_prompt
+def dynamic_prompt(request: ModelRequest) -> str:
+    """根据用户的类型来使用不同的提示词"""
+    print("request", request)
+    user_type = "normal"
 
+    if request.runtime and request.runtime.context:
+        user_type = request.runtime.context.get("user_type", "normal")
+
+    if user_type == "vip":
+        prompt = "回答用户问题之前，首先称呼：尊贵的vip客户你好，然后再回答用户问题"
+    else:
+        prompt = "直接回答用户问题"
+
+    return prompt
+
+@wrap_tool_call
+def handle_tool_error(request,handler):
+    try:
+       return handler(request)
+    except Exception as e:
+        return ToolMessage(
+            tool_call_id=request.tool_call["id"],
+            content=f"目前工具服务不可用：{str(e)}"
+            )
 
 
 # 创建 Agent
 agent = create_agent(
     model=basic_mode,
     tools=[get_stock_price, search_news],
-    middleware=[dynamic_model_selection],
+    middleware=[dynamic_model_selection,dynamic_prompt,handle_tool_error],
 )
 
 # 调用 Agent
-response = agent.invoke({"messages": [HumanMessage(content="比较一下苹果和特斯拉的上周股票价格")]})
+response = agent.invoke({"messages": [{"role": "user", "content": "查找谷歌公司的股价和新闻"}]},
+                        context ={"user_type": "xxx"}
+                        )
 print(response)
 print(response["messages"][-1].content)
