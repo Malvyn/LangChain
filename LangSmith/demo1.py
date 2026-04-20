@@ -12,8 +12,8 @@ from langserve import add_routes
 #os.environ['http_proxy'] = 'http://127.0.0.1:7890'
 #os.environ['https_proxy'] = 'http://127.0.0.1:7890'
 
-os.environ['LANGSMITH_API_KEY'] = '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'
-os.environ['LANGSMITH_TRACING'] = 'true'
+os.environ['LANGSMITH_API_KEY'] = os.getenv('LANGSMITH_API_KEY')
+os.environ['LANGSMITH_TRACING'] = os.getenv('LANGSMITH_TRACING')
 
 # 1. 创建模型
 model = ChatDeepSeek(model_name="deepseek-chat")
