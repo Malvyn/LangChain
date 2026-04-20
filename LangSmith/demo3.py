@@ -18,8 +18,7 @@ from env_utils import DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL
 # os.environ['http_proxy'] = 'http://127.0.0.1:7890'
 # os.environ['https_proxy'] = 'http://127.0.0.1:7890'
 
-os.environ['LANGSMITH_API_KEY'] = os.getenv('LANGSMITH_API_KEY')
-os.environ['LANGSMITH_TRACING'] = os.getenv('LANGSMITH_TRACING')
+
 os.environ['LANGSMITH_PROJECT'] = 'Langchain-vectorstore'
 
 # 聊天机器人
