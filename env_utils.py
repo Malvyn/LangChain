@@ -11,4 +11,6 @@ DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL")
 DASHSCOPE_API_KEY = os.getenv("Qianw_API_KEY")
 DASHSCOPE_API_URL = os.getenv("Qianw_BASE_URL")
 
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
 
